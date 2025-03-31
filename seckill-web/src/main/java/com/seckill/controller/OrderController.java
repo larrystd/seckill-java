@@ -16,7 +16,7 @@ public class OrderController {
     private OrderService orderService;
 
     /**
-     * 下单接口：导致超卖的错误示范
+     * 下单接口：导致超卖的错误示范, 并发下单，导致超卖
      * @param sid
      * @return
      */
@@ -33,4 +33,23 @@ public class OrderController {
         return String.valueOf(id);
     }
 
+
+    /**
+     * 乐观锁更新库存, 并发安全
+     * @param sid
+     * @return
+     */
+    @RequestMapping("/createOptimisticOrder/{sid}")
+    @ResponseBody
+    public String createOptimisticOrder(@PathVariable int sid) {
+        int id;
+        try {
+            id = orderService.createOptimisticOrder(sid);
+            LOGGER.info("购买成功，剩余库存为: [{}]", id);
+        } catch (Exception e) {
+            LOGGER.error("购买失败：[{}]", e.getMessage());
+            return "购买失败，库存不足";
+        }
+        return String.format("购买成功，剩余库存为：%d", id);
+    }
 }

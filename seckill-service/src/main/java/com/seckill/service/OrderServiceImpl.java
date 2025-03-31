@@ -39,6 +39,17 @@ public class OrderServiceImpl implements OrderService {
         return id;
     }
 
+    @Override
+    public int createOptimisticOrder(int sid) {
+        //校验库存
+        Stock stock = checkStock(sid);
+        //乐观锁更新库存
+        saleStockOptimistic(stock);
+        //创建订单
+        int id = createOrder(stock);
+        return stock.getCount() - (stock.getSale()+1);
+    }
+
     /**
      * 检查库存
      * @param sid
@@ -61,6 +72,13 @@ public class OrderServiceImpl implements OrderService {
         stockService.updateStockById(stock);
     }
 
+    private void saleStockOptimistic(Stock stock) {
+        LOGGER.info("查询数据库，尝试更新库存");
+        int count = stockService.updateStockByOptimistic(stock);
+        if (count == 0){
+            throw new RuntimeException("并发更新库存失败，version不匹配");
+        }
+    }
     /**
      * 创建订单
      * @param stock

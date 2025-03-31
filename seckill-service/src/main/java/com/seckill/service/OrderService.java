@@ -11,4 +11,6 @@ public interface OrderService {
      */
     public int createWrongOrder(int sid);
 
+    public int createOptimisticOrder(int sid);
+
 }

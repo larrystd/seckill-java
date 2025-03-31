@@ -97,4 +97,13 @@
       version = #{version,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+  <update id="updateByOptimistic" parameterType="com.seckill.dao.Stock">
+    update stock
+    <set>
+      sale = sale + 1,
+      version = version + 1,
+    </set>
+    WHERE id = #{id,jdbcType=INTEGER}
+    AND version = #{version,jdbcType=INTEGER}
+  </update>
 </mapper>
