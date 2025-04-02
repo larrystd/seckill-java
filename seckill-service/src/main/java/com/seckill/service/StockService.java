@@ -20,4 +20,11 @@ public interface StockService {
 
     int updateStockByOptimistic(Stock stock);
 
+    /**
+     * 根据库存 ID 查询数据库库存信息（悲观锁）
+     * @param id
+     * @return
+     */
+    Stock getStockByIdForUpdate(int id);
+
 }

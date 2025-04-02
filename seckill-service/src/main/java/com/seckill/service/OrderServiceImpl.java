@@ -90,4 +90,30 @@ public class OrderServiceImpl implements OrderService {
         order.setName(stock.getName());
         return orderMapper.insertSelective(order);
     }
+
+
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRED)
+    @Override
+    public int createPessimisticOrder(int sid){
+        // 校验库存, sql语句加悲观锁for update, 作用于整个Transaction
+        Stock stock = checkStockForUpdate(sid);
+        // 更新库存
+        saleStock(stock);
+        // 创建订单
+        int id = createOrder(stock);
+        return stock.getCount() - (stock.getSale());
+    }
+    
+    /**
+     * 检查库存 ForUpdate
+     * @param sid
+     * @return
+     */
+    private Stock checkStockForUpdate(int sid) {
+        Stock stock = stockService.getStockByIdForUpdate(sid);
+        if (stock.getSale().equals(stock.getCount())) {
+            throw new RuntimeException("库存不足");
+        }
+        return stock;
+    }
 }

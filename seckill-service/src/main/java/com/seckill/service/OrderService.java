@@ -13,4 +13,11 @@ public interface OrderService {
 
     public int createOptimisticOrder(int sid);
 
+    /**
+     * 创建正确订单：下单悲观锁 for update
+     * @param sid
+     * @return
+     * @throws Exception
+     */
+    public int createPessimisticOrder(int sid);
 }
