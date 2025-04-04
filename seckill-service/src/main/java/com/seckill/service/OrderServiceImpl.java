@@ -5,6 +5,7 @@ import com.seckill.dao.StockOrder;
 import com.seckill.dao.User;
 import com.seckill.mapper.StockOrderMapper;
 import com.seckill.mapper.UserMapper;
+import com.seckill.utils.CacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +24,16 @@ public class OrderServiceImpl implements OrderService {
     private static final Logger LOGGER = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Autowired
     private StockService stockService;
     
     @Autowired
     private StockOrderMapper orderMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     public int createWrongOrder(int sid) {
@@ -115,5 +122,58 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("库存不足");
         }
         return stock;
+    }
+
+
+    @Override
+    public int createVerifiedOrder(Integer sid, Integer userId, String verifyHash) throws Exception {
+
+        // 验证是否在抢购时间内
+        LOGGER.info("请自行验证是否在抢购时间内,假设此处验证成功");
+
+        // 验证hash值合法性
+        String hashKey = CacheKey.HASH_KEY.getKey() + "_" + sid + "_" + userId;
+        String verifyHashInRedis = stringRedisTemplate.opsForValue().get(hashKey);
+        if (!verifyHash.equals(verifyHashInRedis)) {
+            throw new Exception("hash值与Redis中不符合");
+        }
+        LOGGER.info("验证hash值合法性成功");
+
+        // 检查用户合法性
+        User user = userMapper.selectByPrimaryKey(userId.longValue());
+        if (user == null) {
+            throw new Exception("用户不存在");
+        }
+        LOGGER.info("用户信息验证成功：[{}]", user.toString());
+
+        // 检查商品合法性
+        Stock stock = stockService.getStockById(sid);
+        if (stock == null) {
+            throw new Exception("商品不存在");
+        }
+        LOGGER.info("商品信息验证成功：[{}]", stock.toString());
+
+        //乐观锁更新库存
+        saleStockOptimistic(stock);
+        LOGGER.info("乐观锁更新库存成功");
+
+        //创建订单
+        createOrderWithUserInfoInDB(stock, userId);
+        LOGGER.info("创建订单成功");
+
+        return stock.getCount() - (stock.getSale()+1);
+    }
+
+    /**
+     * 创建订单：保存用户订单信息到数据库
+     * @param stock
+     * @return
+     */
+    private int createOrderWithUserInfoInDB(Stock stock, Integer userId) {
+        StockOrder order = new StockOrder();
+        order.setSid(stock.getId());
+        order.setName(stock.getName());
+        order.setUserId(userId);
+        return orderMapper.insertSelective(order);
     }
 }
